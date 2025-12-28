@@ -400,7 +400,7 @@ body {
 }
 .outline-item {
   font-size: 20px;
-  font-weight: 600;           /* 👈 bolder */
+  font-weight: 500;           /* 👈 bolder */
   color: #222;
   border: none;
   background: none;
@@ -553,3 +553,77 @@ body {
 .btn-create:hover {
   background: #b52a2a;
 }
+/* 
+   OUTLINE 
+ */
+
+.course-outline {
+  width: 260px;
+  position: sticky;
+  top: var(--header-offset);
+}
+
+.outline-content {
+  padding-left: 20px;
+  position: relative;
+}
+
+/* vertical guideline */
+.outline-content::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #e5e7eb; /* light grey */
+}
+
+/* outline item base */
+.outline-item {
+  position: relative;
+  display: block;
+  border: none;
+  background: none;
+  padding: 6px 0 6px 16px;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* vertical indicator */
+.outline-item::before {
+  content: "";
+  position: absolute;
+  left: -14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 20px;
+  border-radius: 4px;
+  background: transparent;
+}
+
+/* ACTIVE MODULE (bold + dark bar) */
+.outline-item:not(.child) {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111;
+}
+
+.outline-item:not(.child)::before {
+  background: #444; /* dark bar */
+}
+
+/* CHILD ITEM */
+.outline-item.child {
+  font-size: 16px;
+  font-weight: 500;
+  color: #6b7280;
+  padding-left: 16px;
+}
+
+/* hover (subtle) */
+.outline-item:hover {
+  color: #111;
+}
+
