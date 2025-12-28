@@ -1,59 +1,96 @@
-const ModuleItem = ({ item, onDelete }) => {
-  // Render different UI based on item type
+import { useRef } from 'react';
+import { useDrag, useDrop } from 'react-dnd';
 
-  const handleDelete = e => {
-    e.stopPropagation();
-    onDelete(item.id);
-  };
+const highlightText = (text, search) => {
+  if (!search) return text;
 
-  if (item.type === 'link') {
-    return (
-      <div className="module-item link-item">
-        <div className="item-content">
-          <div className="item-icon">
-            <span className="icon-link">🔗</span>
-          </div>
-          <div className="item-info">
-            <h4 className="item-title">{item.title}</h4>
-            <a
-              href={item.url}
-              className="item-url"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {item.url}
-            </a>
-          </div>
+  const regex = new RegExp(`(${search})`, 'gi');
+  return text.split(regex).map((part, i) =>
+    part.toLowerCase() === search.toLowerCase() ? (
+      <span
+        key={i}
+        style={{
+          fontWeight: 700,
+          fontSize: '1.05em',
+          color: '#111',
+        }}
+      >
+        {part}
+      </span>
+    ) : (
+      part
+    )
+  );
+};
+
+
+
+
+const ModuleItem = ({
+  item,
+  index,
+  moduleId,
+  search,          // 👈 NEW
+  onDelete,
+  onReorderItems,
+}) => {
+  const ref = useRef(null);
+
+  /* ---------- DROP ---------- */
+  const [, drop] = useDrop({
+    accept: 'ITEM',
+    hover(dragged) {
+      if (!ref.current) return;
+      if (dragged.moduleId !== moduleId) return;
+      if (dragged.index === index) return;
+
+      onReorderItems(moduleId, dragged.index, index);
+      dragged.index = index;
+    },
+  });
+
+  /* ---------- DRAG ---------- */
+  const [{ isDragging }, drag] = useDrag({
+    type: 'ITEM',
+    item: { id: item.id, index, moduleId },
+    collect: monitor => ({
+      isDragging: monitor.isDragging(),
+    }),
+  });
+
+  drag(drop(ref));
+
+  return (
+    <div
+      id={`item-${item.id}`}
+      ref={ref}
+      className="module-item"
+      style={{ opacity: isDragging ? 0.4 : 1 }}
+    >
+      <div className="item-content">
+        <div className="item-icon">
+          {item.type === 'link' ? '🔗' : '📄'}
         </div>
-        <button className="item-delete" onClick={handleDelete}>
-          <span className="delete-icon">🗑️</span>
-        </button>
-      </div>
-    );
-  }
 
-  if (item.type === 'file') {
-    return (
-      <div className="module-item file-item">
-        <div className="item-content">
-          <div className="item-icon">
-            <span className="icon-file">📄</span>
-          </div>
-          <div className="item-info">
-            <h4 className="item-title">{item.title}</h4>
-            <p className="item-details">
-              {item.fileName} ({Math.round(item.fileSize / 1024)} KB)
-            </p>
-          </div>
+        <div className="item-info">
+          <p className="item-title">
+  {highlightText(item.title, search)}
+</p>
+
         </div>
-        <button className="item-delete" onClick={handleDelete}>
-          <span className="delete-icon">🗑️</span>
-        </button>
       </div>
-    );
-  }
 
-  return null; // Fallback for unknown item types
+      <button
+        className="item-delete"
+        onClick={e => {
+          e.stopPropagation();
+          onDelete(item.id);
+        }}
+      >
+        🗑️
+      </button>
+    </div>
+  );
 };
 
 export default ModuleItem;

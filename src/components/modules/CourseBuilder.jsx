@@ -1,66 +1,93 @@
-import { useState } from 'react';
-
+import { useState, useMemo, useEffect } from 'react';
+import { useDrop } from 'react-dnd';
 import EmptyState from '../ui/EmptyState';
 import Header from '../ui/Header';
-
-import LinkModal from './LinkModal';
 import ModuleCard from './ModuleCard';
 import ModuleModal from './ModuleModal';
+import LinkModal from './LinkModal';
 import UploadModal from './UploadModal';
+import ModuleItem from './ModuleItem';
 
 const CourseBuilder = () => {
   const [modules, setModules] = useState([]);
   const [items, setItems] = useState([]);
+  const [search, setSearch] = useState('');
+  const [expandedOutlineModule, setExpandedOutlineModule] = useState(null);
 
-  // Modal states
   const [isModuleModalOpen, setIsModuleModalOpen] = useState(false);
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
-  // Current items for editing
   const [currentModule, setCurrentModule] = useState(null);
   const [currentModuleId, setCurrentModuleId] = useState(null);
 
+  // compute header height and expose as CSS variable so the outline can align
+  useEffect(() => {
+    const setHeaderOffset = () => {
+      const header = document.querySelector('.header');
+      const offset = header ? header.offsetHeight : 0;
+      // small extra gap to visually align with module card top
+      document.documentElement.style.setProperty('--header-offset', `${offset}px`);
+    };
+
+    // initial set and on resize
+    setHeaderOffset();
+    window.addEventListener('resize', setHeaderOffset);
+    return () => window.removeEventListener('resize', setHeaderOffset);
+  }, []);
+
+  // highlight outline item when corresponding module is in view
+  useEffect(() => {
+    const handleScroll = () => {
+      const headerOffset = document.querySelector('.header')?.offsetHeight || 0;
+      const threshold = headerOffset + 200; // trigger when module is near top
+
+      modules.forEach(module => {
+        const moduleEl = document.getElementById(`module-${module.id}`);
+        const outlineBtn = document.querySelector(
+          `.outline-item[data-module-id="${module.id}"]`
+        );
+
+        if (moduleEl && outlineBtn) {
+          const moduleTop = moduleEl.getBoundingClientRect().top;
+          if (moduleTop < threshold) {
+            outlineBtn.classList.add('active');
+          } else {
+            outlineBtn.classList.remove('active');
+          }
+        }
+      });
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [modules]);
+
+  /* ---------- ADD FROM HEADER ---------- */
+
   const handleAddClick = type => {
-    switch (type) {
-      case 'module':
-        setCurrentModule(null);
-        setIsModuleModalOpen(true);
-        break;
-      case 'link':
-        // This is handled through the module card now
-        break;
-      case 'upload':
-        // This is handled through the module card now
-        break;
-      default:
-        break;
+    if (type === 'module') {
+      setCurrentModule(null);
+      setIsModuleModalOpen(true);
+    }
+    if (type === 'link') {
+      setCurrentModuleId(null);
+      setIsLinkModalOpen(true);
+    }
+    if (type === 'upload') {
+      setCurrentModuleId(null);
+      setIsUploadModalOpen(true);
     }
   };
 
-  const handleCloseModuleModal = () => {
-    setIsModuleModalOpen(false);
-    setCurrentModule(null);
-  };
-
-  const handleCloseLinkModal = () => {
-    setIsLinkModalOpen(false);
-    setCurrentModuleId(null);
-  };
-
-  const handleCloseUploadModal = () => {
-    setIsUploadModalOpen(false);
-    setCurrentModuleId(null);
-  };
+  /* ---------- MODULE CRUD ---------- */
 
   const handleSaveModule = module => {
-    if (currentModule) {
-      // Edit existing module
-      setModules(modules.map(m => (m.id === module.id ? module : m)));
-    } else {
-      // Add new module
-      setModules([...modules, module]);
-    }
+    setModules(prev =>
+      currentModule
+        ? prev.map(m => (m.id === module.id ? module : m))
+        : [...prev, module]
+    );
     setIsModuleModalOpen(false);
     setCurrentModule(null);
   };
@@ -71,80 +98,203 @@ const CourseBuilder = () => {
   };
 
   const handleDeleteModule = moduleId => {
-    setModules(modules.filter(module => module.id !== moduleId));
-    // Also remove any items associated with this module
-    setItems(items.filter(item => item.moduleId !== moduleId));
+    setModules(prev => prev.filter(m => m.id !== moduleId));
+    setItems(prev => prev.filter(i => i.moduleId !== moduleId));
   };
+
+  /* ---------- ITEM CRUD ---------- */
 
   const handleAddItem = (moduleId, type) => {
     setCurrentModuleId(moduleId);
-    if (type === 'link') {
-      setIsLinkModalOpen(true);
-    } else if (type === 'file') {
-      setIsUploadModalOpen(true);
-    }
+    type === 'link' ? setIsLinkModalOpen(true) : setIsUploadModalOpen(true);
   };
 
-  const handleSaveLink = linkItem => {
-    setItems([...items, linkItem]);
+  const handleSaveLink = item => {
+    setItems(prev => [...prev, item]);
     setIsLinkModalOpen(false);
     setCurrentModuleId(null);
   };
 
-  const handleSaveUpload = fileItem => {
-    setItems([...items, fileItem]);
+  const handleSaveUpload = item => {
+    setItems(prev => [...prev, item]);
     setIsUploadModalOpen(false);
     setCurrentModuleId(null);
   };
 
-  const handleDeleteItem = itemId => {
-    setItems(items.filter(item => item.id !== itemId));
+  const handleDeleteItem = id => {
+    setItems(prev => prev.filter(i => i.id !== id));
   };
+
+  /* ---------- DRAG & DROP ---------- */
+
+  const moveItemToModule = (itemId, moduleId) => {
+    setItems(prev =>
+      prev.map(i =>
+        i.id === itemId ? { ...i, moduleId } : i
+      )
+    );
+  };
+
+  const [, dropUnassigned] = useDrop({
+    accept: 'ITEM',
+    drop: dragged => {
+      moveItemToModule(dragged.id, null);
+    },
+  });
+
+  const reorderItems = (moduleId, from, to) => {
+    setItems(prev => {
+      const moduleItems = prev.filter(i => i.moduleId === moduleId);
+      const others = prev.filter(i => i.moduleId !== moduleId);
+
+      const updated = [...moduleItems];
+      const [moved] = updated.splice(from, 1);
+      updated.splice(to, 0, moved);
+
+      return [...others, ...updated];
+    });
+  };
+
+  const reorderModules = (from, to) => {
+    setModules(prev => {
+      const arr = [...prev];
+      const [moved] = arr.splice(from, 1);
+      arr.splice(to, 0, moved);
+      return arr;
+    });
+  };
+
+  /* ---------- SEARCH ---------- */
+
+  const filteredModules = useMemo(() => {
+    if (!search.trim()) return modules;
+
+    const q = search.toLowerCase();
+
+    return modules.filter(module => {
+      if (module.name.toLowerCase().includes(q)) return true;
+
+      return items.some(
+        item =>
+          item.moduleId === module.id &&
+          item.title.toLowerCase().includes(q)
+      );
+    });
+  }, [modules, items, search]);
+
+  const filteredItems = useMemo(() => {
+    if (!search.trim()) return items;
+    return items.filter(i =>
+      i.title.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [items, search]);
+
+  const unassignedItems = filteredItems.filter(i => i.moduleId === null);
+  const showOutline = modules.length > 1;
+
+  /* ---------- UI ---------- */
 
   return (
     <div className="course-builder">
-      <Header onAddClick={handleAddClick} />
+      {/* HEADER — untouched */}
+      <Header onAddClick={handleAddClick} onSearch={setSearch} />
 
-      <div className="builder-content">
-        {modules.length === 0 ? (
-          <EmptyState />
-        ) : (
-          <div className="module-list">
-            {modules.map(module => (
+      <div className="builder-layout">
+        {/* MAIN CONTENT — EXACT SAME AS BEFORE */}
+        <div className="builder-content">
+          {unassignedItems.length > 0 && (
+            <div ref={dropUnassigned} className="unassigned-items">
+              {unassignedItems.map(item => (
+                <ModuleItem
+                  key={item.id}
+                  item={item}
+                  onDelete={handleDeleteItem}
+                />
+              ))}
+            </div>
+          )}
+
+          {modules.length === 0 && <EmptyState />}
+
+          {filteredModules.map((module, index) => (
+            <div id={`module-${module.id}`} key={module.id}>
               <ModuleCard
-                key={module.id}
+                index={index}
                 module={module}
-                items={items}
+                search={search}
+                items={filteredItems}
                 onEdit={handleEditModule}
                 onDelete={handleDeleteModule}
                 onAddItem={handleAddItem}
                 onDeleteItem={handleDeleteItem}
+                onDropItem={moveItemToModule}
+                onReorderItems={reorderItems}
+                onReorderModules={reorderModules}
               />
-            ))}
-          </div>
+            </div>
+          ))}
+        </div>
+
+        {/* OUTLINE — NEW, SAFE */}
+        {showOutline && (
+          <aside className="course-outline">
+            <div className="outline-content">
+              <h4 className="outline-title">Outline</h4>
+
+              {modules.map(module => {
+                const moduleItems = items.filter(i => i.moduleId === module.id);
+                const isExpanded = expandedOutlineModule === module.id;
+                
+                return (
+                  <div key={module.id}>
+                    <button
+                      className="outline-item"
+                      data-module-id={module.id}
+                      onClick={() =>
+                        setExpandedOutlineModule(isExpanded ? null : module.id)
+                      }
+                    >
+                      {module.name}
+                    </button>
+                    {isExpanded && moduleItems.map(item => (
+                      <button
+                        key={item.id}
+                        className="outline-item child"
+                        onClick={() =>
+                          document
+                            .getElementById(`item-${item.id}`)
+                            ?.scrollIntoView({ behavior: 'smooth' })
+                        }
+                      >
+                        {item.title}
+                      </button>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          </aside>
         )}
       </div>
 
-      {/* Module Modal */}
+      {/* MODALS — untouched */}
       <ModuleModal
         isOpen={isModuleModalOpen}
-        onClose={handleCloseModuleModal}
+        onClose={() => setIsModuleModalOpen(false)}
         onSave={handleSaveModule}
         module={currentModule}
       />
 
-      {/* Link Modal */}
       <LinkModal
         isOpen={isLinkModalOpen}
-        onClose={handleCloseLinkModal}
+        onClose={() => setIsLinkModalOpen(false)}
         onSave={handleSaveLink}
         moduleId={currentModuleId}
       />
 
-      {/* Upload Modal */}
       <UploadModal
         isOpen={isUploadModalOpen}
-        onClose={handleCloseUploadModal}
+        onClose={() => setIsUploadModalOpen(false)}
         onSave={handleSaveUpload}
         moduleId={currentModuleId}
       />

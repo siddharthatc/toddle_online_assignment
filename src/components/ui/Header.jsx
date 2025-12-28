@@ -1,67 +1,65 @@
 import { useState, useRef, useEffect } from 'react';
+import SearchOutlinedIcon from '../../assets/SearchOutlined.svg';
+import AddOutlinedIcon from '../../assets/AddOutlined.svg';
 
-const Header = ({ onAddClick }) => {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const dropdownRef = useRef(null);
+const Header = ({ onAddClick, onSearch }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = event => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsDropdownOpen(false);
-      }
+    const close = e => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
     };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [dropdownRef]);
-
-  const handleAddClick = () => {
-    setIsDropdownOpen(!isDropdownOpen);
-  };
-
-  const handleCreateModule = () => {
-    onAddClick('module');
-    setIsDropdownOpen(false);
-  };
-
-  const handleAddLink = () => {
-    setIsDropdownOpen(false);
-  };
-
-  const handleUpload = () => {
-    setIsDropdownOpen(false);
-  };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, []);
 
   return (
     <div className="header">
-      <h1 className="header-title">Course builder</h1>
-      <div className="header-right">
-        <div className="search-container">
-          <input type="text" placeholder="Search..." className="search-input" />
-        </div>
-        <div className="dropdown-container" ref={dropdownRef}>
-          <button className="add-button" onClick={handleAddClick}>
-            Add
-          </button>
-          {isDropdownOpen && (
-            <div className="dropdown-menu">
-              <button className="dropdown-item" onClick={handleCreateModule}>
-                <span className="item-icon">📄</span>
-                Create module
-              </button>
-              <button className="dropdown-item" onClick={handleAddLink}>
-                <span className="item-icon">🔗</span>
-                Add a link
-              </button>
-              <button className="dropdown-item" onClick={handleUpload}>
-                <span className="item-icon">⬆️</span>
-                Upload
-              </button>
-            </div>
-          )}
+      <div className="header-inner">
+        <h1 className="header-title">Course builder</h1>
+
+        <div className="header-right">
+          <div className="search-wrapper">
+            <img src={SearchOutlinedIcon} alt="Search" className="search-icon" />
+            <input
+              className="search-input"
+              placeholder="Search..."
+              onChange={e => onSearch(e.target.value)}
+            />
+          </div>
+
+          <div ref={ref} className="dropdown-container">
+            <button className="add-button" onClick={() => setOpen(p => !p)}>
+              <img src={AddOutlinedIcon} alt="Add" className="add-button-icon" />
+              Add
+            </button>
+
+            {open && (
+              <div className="dropdown-menu">
+                <button
+                  className="dropdown-item"
+                  onClick={() => onAddClick('module')}
+                >
+                  📄 Create module
+                </button>
+
+                <button
+                  className="dropdown-item"
+                  onClick={() => onAddClick('link')}
+                >
+                  🔗 Add link
+                </button>
+
+                <button
+                  className="dropdown-item"
+                  onClick={() => onAddClick('upload')}
+                >
+                  ⬆️ Upload file
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
