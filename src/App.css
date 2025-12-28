@@ -392,15 +392,16 @@ body {
   background: transparent;
   border: none;
 
-  padding: 12px;
+  padding: 22px;
 }
 
 .outline-title {
   display: none;
 }
 .outline-item {
+  
   font-size: 20px;
-  font-weight: 500;           /* 👈 bolder */
+  font-weight: 450;           /* 👈 bolder */
   color: #222;
   border: none;
   background: none;
@@ -421,9 +422,9 @@ body {
   padding-left: 24px;
 }
 
-/* ===============================
+/* 
    RESPONSIVE
-================================ */
+ */
 @media (max-width: 900px) {
   .course-builder-container {
     flex-direction: column;
@@ -450,9 +451,9 @@ body {
     width: 100%;
   }
 }
-/* ===============================
+/* 
    MODAL FIX (Create / Edit Module)
-================================ */
+*/
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -576,7 +577,7 @@ body {
   top: 0;
   bottom: 0;
   width: 2px;
-  background: #e5e7eb; /* light grey */
+  background: #595959; /* light grey */
 }
 
 /* outline item base */
@@ -604,26 +605,26 @@ body {
 }
 
 /* ACTIVE MODULE (bold + dark bar) */
-.outline-item:not(.child) {
+.outline-item:not(.child) :hover {
   font-size: 18px;
   font-weight: 700;
   color: #111;
 }
 
-.outline-item:not(.child)::before {
-  background: #444; /* dark bar */
-}
+
 
 /* CHILD ITEM */
 .outline-item.child {
   font-size: 16px;
   font-weight: 500;
-  color: #6b7280;
+  color: #2f3031;
   padding-left: 16px;
 }
 
 /* hover (subtle) */
 .outline-item:hover {
   color: #111;
+  padding-left: 18px;
 }
+
 
